@@ -1,0 +1,55 @@
+//@version=6
+
+indicator("Average True Range Percent", shorttitle="ATRP", overlay=false)
+
+// Inputs
+atrLookback = input.int(14, title="ATR Lookback Period")
+smoothingType = input.string("RMA", options=["RMA", "SMA", "EMA", "WMA"], title="ATR Smoothing")
+atrTimeframe = input.string("Chart", title="ATR Timeframe", options=["Chart", "1 tick", "10 ticks", "100 ticks", "1000 ticks", "1 second", "5 seconds", "10 seconds", "15 seconds", "30 seconds", "45 seconds", "1 minute", "2 minutes", "3 minutes", "5 minutes", "15 minutes", "30 minutes", "45 minutes", "1 hour", "2 hours", "3 hours", "4 hours", "1 day", "1 week", "1 month", "3 months", "6 months", "12 months"], group="Calculation")
+waitForClose = input.bool(false, title="Wait for Timeframe Closes", group="Calculation")
+
+// ATR Logic
+toTimeframe(tf) =>
+    switch tf
+        "1 tick" => "1T"
+        "10 ticks" => "10T"
+        "100 ticks" => "100T"
+        "1000 ticks" => "1000T"
+        "1 second" => "1S"
+        "5 seconds" => "5S"
+        "10 seconds" => "10S"
+        "15 seconds" => "15S"
+        "30 seconds" => "30S"
+        "45 seconds" => "45S"
+        "1 minute" => "1"
+        "2 minutes" => "2"
+        "3 minutes" => "3"
+        "5 minutes" => "5"
+        "15 minutes" => "15"
+        "30 minutes" => "30"
+        "45 minutes" => "45"
+        "1 hour" => "60"
+        "2 hours" => "120"
+        "3 hours" => "180"
+        "4 hours" => "240"
+        "1 day" => "1D"
+        "1 week" => "1W"
+        "1 month" => "1M"
+        "3 months" => "3M"
+        "6 months" => "6M"
+        "12 months" => "12M"
+        => ""
+
+atrSmoothing(smoothType, src, length) =>
+    switch smoothType
+        "SMA" => ta.sma(src, length)
+        "EMA" => ta.ema(src, length)
+        "WMA" => ta.wma(src, length)
+        => ta.rma(src, length)
+
+atrExpression = atrSmoothing(smoothingType, ta.tr(true), atrLookback)
+atrLive = request.security(syminfo.tickerid, toTimeframe(atrTimeframe), atrExpression)
+atrConfirmed = request.security(syminfo.tickerid, toTimeframe(atrTimeframe), atrExpression[1], lookahead=barmerge.lookahead_on)
+atrValue = waitForClose ? atrConfirmed : atrLive
+atrp = (atrValue/close)*100
+plot(atrp, color=color.red, linewidth=1)
